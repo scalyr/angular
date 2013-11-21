@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+# Usage:  startJsTester
+#
+# This starts karma, the javascript unit test framework.  This script
+# is meant to be run on a development machine.  It will launch Chrome
+# and execute all javascript unit tests, reporting the results to
+# stdout.  By default, the script will never terminate, but instead watch
+# for changes to any of the monitored javascript files and HTML resources
+# (defined in a configuration file), rerunning all unit tests with each new
+# change and reporting the results to stdout.
+#
+# The unit test framework also runs a light weight http server on
+# port 9876 allowing you to access local files over http, enabling
+# direct testing of some of the html files.  This is better than just
+# using the browser to access the files via file:// because the browser's
+# default security policies prevents javascript loaded via file:// to
+# load other javascript files.
+#
+# To use this script, you must have installed node.js and karma.
+# To install karma, do the following:
+# 1. Download the node.js pkg file from http://nodejs.org and follow instructions.
+# 2. sudo npm -g karma
+#
+# The karma configuration file, which details configures which js files
+# are included, how to run http server and what files to export, etc,
+# is in scripts/includeFiles/karma.conf.js
+
+function die() {
+  echo "$1";
+  exit 1;
+}
+
+cd "$(dirname $0)" || die "Failed to cd to script directory";
+
+karma start includeFiles/karma.conf.js;
+
+
