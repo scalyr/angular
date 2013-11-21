@@ -14,7 +14,7 @@ the source is provided as is.  We expect this source will act more as a
 starting point for other developers rather than as a complete standalone
 Javascript library.
 
-Also note, because some of the optimizatin techniques rely on non-public
+Also note, because some of the optimization techniques rely on non-public
 AngularJS variables and methods, these directives may not work for all versions
 of AngularJS. The current tests validate them against 1.2.1.
 
