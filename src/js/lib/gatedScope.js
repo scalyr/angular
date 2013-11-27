@@ -86,7 +86,7 @@ defineScalyrAngularModule('gatedScope', [])
               // circuit it with === operator, only when === fails do we use .equals
               if (watch && (value = watch.get(current)) !== (last = watch.last) &&
                   !(watch.eq
-                      ? equals(value, last)
+                      ? areEqual(value, last)
                       : (typeof value == 'number' && typeof last == 'number'
                         && isNaN(value) && isNaN(last)))) {
                 dirty = true;

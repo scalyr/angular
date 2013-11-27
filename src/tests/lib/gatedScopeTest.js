@@ -256,4 +256,26 @@ describe('GatedScope', function() {
     $rootScope.$digest();
     expect(counter).toEqual(4);
   });
+
+  it('should evaluate watchers registered with equality equal to true', function() {
+    var objectToWatch = { value: 5 };
+
+    var counter = 0;
+    function watcher() {
+      ++counter;
+      return objectToWatch;
+    }
+
+    // Add a gate so that all future watchers are evaluated using our version of $digest.
+    var scope = $rootScope.$new();
+    scope.$addWatcherGate(function() {
+      return true;
+    });
+
+    scope.$watch(watcher, function(newValue) {
+    }, true);
+
+    // When both gates are down, the watcher should not be evaluated.
+    $rootScope.$digest();
+  });
 });
