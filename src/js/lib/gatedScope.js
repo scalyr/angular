@@ -49,6 +49,7 @@ defineScalyrAngularModule('gatedScope', [])
       // We just have to do the work that normally a child class's
       // constructor would perform -- initializing our instance vars.
       result.$$gatingFunction = this.$$gatingFunction;
+      result.$$parentGatingFunction = this.$$gatingFunction;
       result.$$shouldGateFunction = this.$$shouldGateFunction;
       result.$$gatedWatchers = [];
 
@@ -150,7 +151,39 @@ defineScalyrAngularModule('gatedScope', [])
         return scopePrototype.$watch.call(this, watchExpression, listener, objectEquality);
       }
     };
-    
+
+    /**
+     * @inherited $digest
+     */
+    methodsToAdd.$digest = function gatedDigest() {
+      // We have to take care if a scope's digest method was invoked that has a
+      // gating function in the parent scope.  In this case, the watcher for that
+      // gating function is registered in the parent (the one added in gatedWatch),
+      // and will not be evaluated here.  So, we have to manually see if the gating
+      // function is true and if so, evaluate any gated watchers for that function on
+      // this scope.  This needs to happen to properly support invoking $digest on a
+      // scope with a parent scope with a gating function.
+      // NOTE:  It is arguable that we are not correctly handling nested gating functions
+      // here since we do not know if the parent gating function was nested in other gating
+      // functions and should be evaluated at all.  However, if a caller is invoking
+      // $digest on a particular scope, we assume the caller is doing that because it
+      // knows the watchers should be evaluated.
+      if (!isNull(this.$$parentGatingFunction) && this.$$parentGatingFunction()) {
+        var dirty = false;
+        var ttl = 5;
+        do {
+          dirty = this.$digestGated(this.$$parentGatingFunction);
+          ttl--;
+
+          if (dirty && !(ttl--)) {
+            throw Error(TTL + ' $digest() iterations reached for gated watcher. Aborting!\n' +
+                'Watchers fired in the last 5 iterations.');
+          }
+        } while (dirty);
+      }
+      return scopePrototype.$digest.call(this) || dirty;
+    }
+
     /**
      * Modifies this scope so that all future watchers registered by $watch will
      * only be evaluated if gatingFunction returns true.  Optionally, you may specify
@@ -218,6 +251,7 @@ defineScalyrAngularModule('gatedScope', [])
     angular.extend($rootScope, methodsToAdd);
 
     $rootScope.$$gatingFunction = null;
+    $rootScope.$$parentGatingFunction = null;
     $rootScope.$$shouldGateFunction = null;
     $rootScope.$$gatedWatchers = [];
 
