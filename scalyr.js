@@ -399,6 +399,9 @@ defineScalyrAngularModule('slyEvaluate', ['gatedScope'])
             if (isStringEmpty(alwaysEvaluateString))
               throw new Exception('Empty string is illegal for value of slyAlwaysEvaluate');
           }
+          scope.$forceEvaluate = function() {
+              scope.$$shouldBypassWatcherOnNextRun = true;
+          };
           scope.$addWatcherGate(function evaluteOnlyWhenChecker() {
             // We should only return true if expressionToCheck evaluates to a value different
             // than previousValue.
@@ -410,6 +413,10 @@ defineScalyrAngularModule('slyEvaluate', ['gatedScope'])
             }
             var result = previousValue !== currentValue;
             previousValue = currentValue;
+            if (!result && scope.$$shouldBypassWatcherOnNextRun) {
+                result = true;
+                scope.$$shouldBypassWatcherOnNextRun = false;
+            }
             return result;
           }, function shouldGateWatcher(watchExpression) {
             // Should return true if the given watcher that's about to be registered should
