@@ -1,5 +1,5 @@
 /**
- * @license scalyr v1.0.1
+ * @license scalyr v1.0.2
  * (c) 2013 Scalyr, Inc. http://scalyr.com
  * License: MIT
  */
