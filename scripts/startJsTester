@@ -20,8 +20,8 @@
 # To use this script, you must have installed node.js and karma.
 # To install karma, do the following:
 # 1. Download the node.js pkg file from http://nodejs.org and follow instructions.
-# 2. sudo npm -g karma
-#
+# 2. sudo npm install -g karma karma-jasmine karma-chrome-launcher
+
 # The karma configuration file, which details configures which js files
 # are included, how to run http server and what files to export, etc,
 # is in scripts/includeFiles/karma.conf.js
