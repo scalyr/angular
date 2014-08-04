@@ -1,8 +1,11 @@
 /**
- * @license scalyr v1.0.1
+ * @license scalyr v1.0.2
  * (c) 2013 Scalyr, Inc. http://scalyr.com
  * License: MIT
  */
+
+'use strict';
+
 // You may just depend on the 'sly' module to pull in all of the
 // dependencies.
 angular.module('sly', ['slyEvaluate', 'slyRepeat']);
@@ -587,8 +590,10 @@ defineScalyrAngularModule('slyRepeat', ['gatedScope'])
         // was first 10, then 5, we will end up with the last 5 elements in the previousElementBuffer.
         // We keep this in case the length increases again.
         var previousElementBuffer = [];
-        
-        var deregisterCallback = $scope.$watchCollection(collectionExpr, function(collection) {         
+
+        var deregisterCallback = $scope.$watchCollection(collectionExpr, function(collection) {
+          if (!collection)
+            return;
           if (!isArray(collection))
             throw Error("'collection' did not evaluate to an array.  expression was " + collectionExpr);
           var originalPreviousElementsLength = previousElements.length;
@@ -714,12 +719,12 @@ defineScalyrAngularModule('slyRepeat', ['gatedScope'])
 defineScalyrAngularModule('gatedScope', [])
 .config(['$provide', function($provide) {
   // We use a decorator to override methods in $rootScope.
-  $provide.decorator('$rootScope', ['$delegate', '$exceptionHandler', 
+  $provide.decorator('$rootScope', ['$delegate', '$exceptionHandler',
       function ($rootScope, $exceptionHandler) {
 
     // Make a copy of $rootScope's original methods so that we can access
     // them to invoke super methods in the ones we override.
-    scopePrototype = {};
+    var scopePrototype = {};
     for (var key in $rootScope) {
       if (isFunction($rootScope[key]))
         scopePrototype[key] = $rootScope[key];
@@ -743,7 +748,7 @@ defineScalyrAngularModule('gatedScope', [])
       // Because of how scope.$new works, the returned result
       // should already have our new methods.
       var result = scopePrototype.$new.call(this, isolate);
-      
+
       // We just have to do the work that normally a child class's
       // constructor would perform -- initializing our instance vars.
       result.$$gatingFunction = this.$$gatingFunction;
@@ -766,7 +771,7 @@ defineScalyrAngularModule('gatedScope', [])
       var watch, value,
         watchers,
         length,
-        next, current = this, target = this,
+        next, current = this, target = this, last,
         dirty = false;
 
       do { // "traverse the scopes" loop

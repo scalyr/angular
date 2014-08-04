@@ -75,8 +75,10 @@ defineScalyrAngularModule('slyRepeat', ['gatedScope'])
         // was first 10, then 5, we will end up with the last 5 elements in the previousElementBuffer.
         // We keep this in case the length increases again.
         var previousElementBuffer = [];
-        
-        var deregisterCallback = $scope.$watchCollection(collectionExpr, function(collection) {         
+
+        var deregisterCallback = $scope.$watchCollection(collectionExpr, function(collection) {
+          if (!collection)
+            return;
           if (!isArray(collection))
             throw Error("'collection' did not evaluate to an array.  expression was " + collectionExpr);
           var originalPreviousElementsLength = previousElements.length;
