@@ -91,3 +91,15 @@ Track By does not work. Use at your own peril.
 </table>
 
 Please contact contact@scalyr.com for any questions or problems.
+
+== Contributing ==
+
+```
+npm install -g karma karma-cli karma-jasmine karma-chrome-launcher
+```
+
+Then from root directory :
+```
+./scripts/buildScalyr.js
+./scripts/startJsTester
+```
