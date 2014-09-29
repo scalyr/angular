@@ -312,4 +312,55 @@ describe('GatedScope', function() {
     // When both gates are down, the watcher should not be evaluated.
     $rootScope.$digest();
   });
+
+  it('should evaluate new watchers when gating function has shouldEvalNewWatchers = true', function() {
+    var gateClosed = false;
+
+    var child = $rootScope.$new();
+    child.$addWatcherGate(function() {
+      return !gateClosed;
+    }, null, true);
+
+    $rootScope.$digest();
+
+    gateClosed = true;
+
+    var counter = 0;
+    var watchedVal = 1;
+    function watcher() {
+      ++counter;
+      return watchedVal;
+    }
+
+    child.$watch(watcher);
+    $rootScope.$digest();
+
+    // Should have been evaluated twice, one for the first dirty cycle, and then for
+    // cycle it was not dirty on.
+    expect(counter).toEqual(2);
+  });
+
+  it('should not evaluate new watchers when gating function has shouldEvalNewWatchers = false', function() {
+    var gateClosed = false;
+
+    var child = $rootScope.$new();
+    child.$addWatcherGate(function() {
+      return !gateClosed;
+    }, null, false);
+
+    $rootScope.$digest();
+
+    gateClosed = true;
+    var counter = 0;
+    var watchedVal = 1;
+    function watcher() {
+      ++counter;
+      return watchedVal;
+    }
+
+    child.$watch(watcher);
+    $rootScope.$digest();
+
+    expect(counter).toEqual(0);
+  });
 });

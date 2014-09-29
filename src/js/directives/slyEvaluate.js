@@ -8,9 +8,10 @@
  *
  *  slyEvaluateOnlyWhen:  A directive that prevents updating / evaluating
  *      all bindings for the current element and its children unless
- *      the expression has changed values.  It currently assumes the
+ *      the expression has changed values.  If new children are added, they
+ *      are always evaluated at least once.  It currently assumes the
  *      expression evaluates to an object and detects changes only by
- *      a change in object reference.
+ *      a change in object reference.  
  *
  *  slyAlwaysEvaluate: Can only be used in conjunction with the
  *      slyEvaluateOnlyWhen directive.  This directive will ensure that
@@ -75,7 +76,7 @@ defineScalyrAngularModule('slyEvaluate', ['gatedScope'])
             // be gated.
             return isNull(alwaysEvaluateString) || 
                    !(isStringNonempty(watchExpression) && (watchExpression.indexOf(alwaysEvaluateString) >= 0));
-          });
+          }, true /* Evaluate any newly added watchers when they are added */);
         },
       };
     },
