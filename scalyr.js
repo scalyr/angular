@@ -1,5 +1,5 @@
 /**
- * @license scalyr v1.0.2
+ * @license scalyr v1.0.3
  * (c) 2013 Scalyr, Inc. http://scalyr.com
  * License: MIT
  */
@@ -352,9 +352,10 @@ function defineScalyrAngularModule(moduleName, dependencies) {
  *
  *  slyEvaluateOnlyWhen:  A directive that prevents updating / evaluating
  *      all bindings for the current element and its children unless
- *      the expression has changed values.  It currently assumes the
+ *      the expression has changed values.  If new children are added, they
+ *      are always evaluated at least once.  It currently assumes the
  *      expression evaluates to an object and detects changes only by
- *      a change in object reference.
+ *      a change in object reference.  
  *
  *  slyAlwaysEvaluate: Can only be used in conjunction with the
  *      slyEvaluateOnlyWhen directive.  This directive will ensure that
@@ -419,7 +420,7 @@ defineScalyrAngularModule('slyEvaluate', ['gatedScope'])
             // be gated.
             return isNull(alwaysEvaluateString) || 
                    !(isStringNonempty(watchExpression) && (watchExpression.indexOf(alwaysEvaluateString) >= 0));
-          });
+          }, true /* Evaluate any newly added watchers when they are added */);
         },
       };
     },
@@ -755,6 +756,7 @@ defineScalyrAngularModule('gatedScope', [])
       result.$$parentGatingFunction = this.$$gatingFunction;
       result.$$shouldGateFunction = this.$$shouldGateFunction;
       result.$$gatedWatchers = [];
+      result.$$cleanUpQueue = this.$$cleanUpQueue;
 
       return result;
     };
@@ -786,6 +788,14 @@ defineScalyrAngularModule('gatedScope', [])
               if (watch.gatingFunction !== targetGatingFunction)
                 continue;
 
+              // Since we are about to execute the watcher as part of a digestGated
+              // call, we can remove it from the normal digest queue if it was placed
+              // there because the watcher was added after the gate function's first
+              // evaluation.
+              if (watch && !isNull(watch.cleanUp)) {
+                watch.cleanUp();
+                watch.cleanUp = null;
+              }
               // Most common watches are on primitives, in which case we can short
               // circuit it with === operator, only when === fails do we use .equals
               if (watch && (value = watch.get(current)) !== (last = watch.last) &&
@@ -820,6 +830,8 @@ defineScalyrAngularModule('gatedScope', [])
         }
       } while ((current = next));
 
+      // Mark that this gating function has digested all children.
+      targetGatingFunction.hasDigested = true;
       return dirty;
     };
 
@@ -844,11 +856,38 @@ defineScalyrAngularModule('gatedScope', [])
         var result = scopePrototype.$watch.call(this, watchExpression, listener, objectEquality);
         this.$$watchers = tmp;
         this.$$gatedWatchers[0].gatingFunction = this.$$gatingFunction;
+        this.$$gatedWatchers[0].cleanUp = null;
 
         // We know that the last field of the watcher object will be set to initWatchVal, so we
         // grab it here.
         initWatchVal = this.$$gatedWatchers[0].last;
+        var watch = this.$$gatedWatchers[0];
 
+        // We should make sure the watch expression gets evaluated fully on at least one
+        // digest cycle even if the gate function is now closed if requested by the gating function's
+        // value for shouldEvalNewWatchers.  We do this by adding in normal watcher that will execute
+        // the watcher we just added and remove itself after the digest cycle completes.
+        if (this.$$gatingFunction.shouldEvalNewWatchers && this.$$gatingFunction.hasDigested) {
+          var self = this;
+          watch.cleanUp = scopePrototype.$watch.call(self, function() {
+            if (!isNull(watch.cleanUp)) {
+              self.$$cleanUpQueue.unshift(watch.cleanUp);
+              watch.cleanUp = null;
+            }
+            var value;
+            var last = initWatchVal;
+
+            if (watch && (value = watch.get(self)) !== (last = watch.last) &&
+                  !(watch.eq
+                      ? areEqual(value, last)
+                      : (typeof value == 'number' && typeof last == 'number'
+                        && isNaN(value) && isNaN(last)))) {
+                watch.last = watch.eq ? copy(value) : value;
+                watch.fn(value, ((last === initWatchVal) ? value : last), self);
+             }
+            return watch.last;
+          });
+        }
         return result;
       } else {
         return scopePrototype.$watch.call(this, watchExpression, listener, objectEquality);
@@ -871,8 +910,8 @@ defineScalyrAngularModule('gatedScope', [])
       // functions and should be evaluated at all.  However, if a caller is invoking
       // $digest on a particular scope, we assume the caller is doing that because it
       // knows the watchers should be evaluated.
+      var dirty = false;
       if (!isNull(this.$$parentGatingFunction) && this.$$parentGatingFunction()) {
-        var dirty = false;
         var ttl = 5;
         do {
           dirty = this.$digestGated(this.$$parentGatingFunction);
@@ -884,7 +923,19 @@ defineScalyrAngularModule('gatedScope', [])
           }
         } while (dirty);
       }
-      return scopePrototype.$digest.call(this) || dirty;
+
+      dirty = scopePrototype.$digest.call(this) || dirty;
+      
+      var cleanUpQueue = this.$$cleanUpQueue;
+
+      while (cleanUpQueue.length)
+        try {
+          cleanUpQueue.shift()();
+        } catch (e) {
+          $exceptionHandler(e);
+        }
+
+      return dirty;
     }
 
     /**
@@ -901,8 +952,13 @@ defineScalyrAngularModule('gatedScope', [])
      *   a new watcher will be gated using gatingFunction.  It is evaluated with the
      *   arguments to $watch and should return true if the watcher created by those
      *   arguments should be gated
+     * @param {Boolean} shouldEvalNewWatchers If true, if a watcher is added
+     *   after the gating function has returned true on a previous digest cycle, the
+     *   the new watcher will be evaluated on the next digest cycle even if the
+     *   gating function is currently return false.
      */
-    methodsToAdd.$addWatcherGate = function(gatingFunction, shouldGateFunction) {
+    methodsToAdd.$addWatcherGate = function(gatingFunction, shouldGateFunction,
+                                            shouldEvalNewWatchers) {
       var changeCount = 0;
       var self = this;
 
@@ -918,30 +974,36 @@ defineScalyrAngularModule('gatedScope', [])
       // true (which we can tell if the watcher we register here is evaluated), then
       // we always evaluate our watcher until our gating function returns true.
       var hasNestedGates = !isNull(this.$$gatingFunction);
-      var promotedWatcher = null;
 
-      this.$watch(function() {
-        if (gatingFunction()) {
-          if (self.$digestGated(gatingFunction))
-            ++changeCount;
-        } else if (hasNestedGates && isNull(promotedWatcher)) {
-          promotedWatcher = scopePrototype.$watch.call(self, function() {
-            if (gatingFunction()) {
-              promotedWatcher();
-              promotedWatcher = null;
-              if (self.$digestGated(gatingFunction))
-                ++changeCount;
-            }
-            return changeCount;
-          });
-        }
-        return changeCount;
-      });
+      (function() {
+        var promotedWatcher = null;
+
+        self.$watch(function() {
+          if (gatingFunction()) {
+            if (self.$digestGated(gatingFunction))
+              ++changeCount;
+          } else if (hasNestedGates && isNull(promotedWatcher)) {
+            promotedWatcher = scopePrototype.$watch.call(self, function() {
+              if (gatingFunction()) {
+                promotedWatcher();
+                promotedWatcher = null;
+                if (self.$digestGated(gatingFunction))
+                  ++changeCount;
+              }
+              return changeCount;
+            });
+          }
+          return changeCount;
+        });
+      })();
 
 
       if (isUndefined(shouldGateFunction))
         shouldGateFunction = null;
+      if (isUndefined(shouldEvalNewWatchers))
+        shouldEvalNewWatchers = false;
       this.$$gatingFunction = gatingFunction;
+      this.$$gatingFunction.shouldEvalNewWatchers = shouldEvalNewWatchers;
       this.$$shouldGateFunction = shouldGateFunction;
     };
 
@@ -957,6 +1019,7 @@ defineScalyrAngularModule('gatedScope', [])
     $rootScope.$$parentGatingFunction = null;
     $rootScope.$$shouldGateFunction = null;
     $rootScope.$$gatedWatchers = [];
+    $rootScope.$$cleanUpQueue = [];
 
     return $rootScope;
   }]);
