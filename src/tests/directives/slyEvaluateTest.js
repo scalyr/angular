@@ -69,6 +69,30 @@ describe('slyEvaluate.slyEvaluateOnlyWhen', function() {
 
     expect(span.eq(0).text()).toEqual('12');
   });
+
+  it('should evaluate a new child no matter what', 
+     inject(function($rootScope, $compile) {
+       scope = $rootScope;
+       scope.dataObject = {
+         value: 5,
+       };
+       scope.x = 12;
+      
+      page = angular.element('<div sly-evaluate-only-when="dataObject"></div>');
+
+      $compile(page)(scope);
+      scope.$digest();
+
+      // We simulate adding a new child to the div by just creating a new element
+      // and compiling it in.  This is a bit hacky and hopefully won't break.
+      divScope = page.scope();
+      span = angular.element('<span>{{x}}</span>');
+      $compile(span)(divScope);
+
+      scope.$digest();
+
+      expect(span.eq(0).text()).toEqual('12');
+  }));
 });
 
 describe('slyEvaluate.slyAlwaysEvaluate', function() {
