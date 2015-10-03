@@ -8,7 +8,7 @@ improve the responsiveness of its user interface, as discussed in the blog post
 These directives are meant to demonstrate the optimization techniques discussed
 in the blog post.  The directives were really only meant for internal use, but
 since there was sufficient interest from readers, we are publishing the source.
-Unfortunately, we cannot make maintaining this library a high priority. We will 
+Unfortunately, we cannot make maintaining this library a high priority. We will
 push bug fixes and accept pull requests from other developers, but beyond that,
 the source is provided as is.  We expect this source will act more as a
 starting point for other developers rather than as a complete standalone
@@ -50,7 +50,7 @@ slyAlwaysEvaluate
 An attribute directive that can only be used in conjunction with the
 slyEvaluateOnlyWhen directive.  This directive will ensure that
 any expression that is being watched will always be evaluated
-if it contains the string specified in the attribute value (i.e., 
+if it contains the string specified in the attribute value (i.e.,
 it will ignore whether or not the slyEvaluateOnlyWhen expression has changed.)
 This is useful when you wish to check some expressions all the time.
 Note, this only works if the directives register a string watch expression
@@ -60,7 +60,7 @@ implementation.
 <tr><td>
 slyPreventEvaluationWhenHidden
 </td><td>
-An attribute directive that will only 
+An attribute directive that will only
 evaluate the bindings and expressions for the current element and its children
 if the current element is not hidden (detected by the element having the
 'ng-hide' CSS class.)
@@ -95,7 +95,7 @@ Please contact contact@scalyr.com for any questions or problems.
 == Contributing ==
 
 ```
-npm install -g karma karma-cli karma-jasmine karma-chrome-launcher
+npm install
 ```
 
 Then from root directory :
