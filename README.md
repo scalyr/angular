@@ -1,4 +1,5 @@
 Angular Directives by Scalyr
+modified by Peter Veres2 EPAM
 ---
 
 This is the source code for the optimization directives Scalyr created to
