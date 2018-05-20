@@ -1,5 +1,4 @@
-Angular Directives by Scalyr
----
+
 
 This is the source code for the optimization directives Scalyr created to
 improve the responsiveness of its user interface, as discussed in the blog post
