@@ -3,7 +3,7 @@ Angular Directives by Scalyr
 
 This is the source code for the optimization directives Scalyr created to
 improve the responsiveness of its user interface, as discussed in the blog post
-[Optimizing AngularJS: 1200ms to 35ms](http://blog.scalyr.com/2013/10/31/angularjs-1200ms-to-35ms/).
+[Optimizing AngularJS: 1200ms to 35ms](https://www.scalyr.com/blog/angularjs-1200ms-to-35ms).
 
 These directives are meant to demonstrate the optimization techniques discussed
 in the blog post.  The directives were really only meant for internal use, but
